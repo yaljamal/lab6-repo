@@ -34,3 +34,24 @@ function Location(city,geoData){
     this.lattitude=geoData[0].lat;
     this.longitude=geoData[0].lon;
 }
+
+// http://localhost:3000/weather?city=amman
+
+server.get('/weather',(request,response)=>{
+    let weatherArry=[];
+    const weatherData=require('./data/weather.json');
+    const city=request.query.city_name;
+    weatherData.data.forEach( (val ,ind )=>{
+        const weatherData2=new Weather(city,val);
+        weatherArry.push(weatherData2);
+
+    });
+    response.send(weatherArry);
+    });
+
+function Weather(city,weather3){
+        this.search_query =city;
+        this.description=weather3.weather.description;
+        this.valid_date=weather3.valid_date;
+
+    }
