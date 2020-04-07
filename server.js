@@ -8,25 +8,28 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 
-
 // Application Setup
 const server = express();
 const PORT = process.env.PORT || 3000;
 server.use(cors());
 
-
+const pg=require('pg');
+const client = new pg.Client(process.env.DATABASE_URL); 
 server.get('/', (request, response) => {
     response.status(200).send('it works ');
 })
-
+// localhost3000:/weather?city=
 server.get('/weather', weatherHandler);
+// localhost3000:/location?city=
 server.get('/location', locationHandler);
+// localhost3000:/addlocation?city=
+server.get('/addlocation', addLocation);
+// http://localhost:3000/hiking?lattitude=-105.2755&longitude=39.9787
 server.get('/hiking', hikingHandler);
 
 
 
 // http://localhost:3000/location?city=Lynnwood
-
 function locationHandler(request, response) {
     const city = request.query.city;
     // const city = request.query.search_query;
@@ -35,18 +38,34 @@ function locationHandler(request, response) {
     getLocation(city,key)
         .then(locationData2 => response.status(200).json(locationData2.body));
 }
+function addLocation(request,response){
+    let search_query=request.query.search;
+    let formatted_query=request.query.format;
+    let lat=request.query.lat;
+    let lon=request.query.lon;
+    let saveValues=[search_query,formatted_query,lat,lon];
+    let sql = `INSERT INTO newLocation (search_query,formatted_query,lattitude,longitude)VALUES($1,$2,$3,$4)`;
+    client.query(sql,saveValues)
+    .then(result=>{
+        response.status(200).json(result.rows);
 
+    })
+}
 function getLocation(city,key) {
-    const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
-    console.log('ddddddd', url);
-    return superagent.get(url)
-        .then(locationData2 => {
-                const locationData = new Location(city,locationData2.body);
-                return locationData2;
-            
-        })
-
-
+    let sql_query = 'select * newLocation where search_query = amman ';
+    if(sql_query === null){
+        const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
+        console.log('the location URL', url);
+        return superagent.get(url)
+            .then(locationData2 => {
+                    const locationData = new Location(city,locationData2.body);
+                    return locationData2;
+                
+            });
+    }
+    else{
+        addLocation();
+    }
 }
 function Location(city, geoData) {
     this.search_query = city;
@@ -78,7 +97,7 @@ const weatherSummaries = [];
 function getWeather(city) {
     let key = process.env.WEATHER_API_KEY;
     const url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}`;
-    console.log('ddddddd', url);
+    console.log('the weather URL', url);
     return superagent.get(url)
         .then(weatherData => {
             weatherData.body.data.forEach(val => {
@@ -87,49 +106,48 @@ function getWeather(city) {
             });
             return weatherSummaries;
         })
-
-
-
 }
 function Weather(weather3) {
-    this.description = weather3.weather.description;
+    this.description = weather3.weather.forecast;
     this.valid_date = weather3.valid_date;
 
 }
 function hikingHandler(request, response) {
     // console.log('the id is :', id);
-    let lat=request.query.lat;
-    let lon=request.query.lon;
-    getHik(lat , lon)
+    let lat=request.query.lattitude;
+    let lon=request.query.longitude;
+    let key = process.env.HIKING_API_KEY;
+    getHik(key,lat,lon)
         .then(hikingData => response.status(200).json(hikingData));
 
 }
-let hikinhSummaries = [];
-function getHik(lat,lon) {
-    let key = process.env.HIKING_API_KEY;
-    const url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=10&key=${key}`;
+function getHik(key,lat,lon) {
+    let url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=100&sort=Distance&key=${key}`;
     console.log(url);
     return superagent.get(url)
         .then(hikingData => {
-            hikingData.body.data.forEach(val => {
-                var hikingData = new Hiking(val);
-                hikinhSummaries.push(hikingData);
+          let alltrials=  hikingData.body.trails.map(val => {
+                return new Hiking(val);
             });
-            return hikinhSummaries;
+            return alltrials;
         })
 }
 function Hiking(hiking) {
-    this.name = hiking.trails.name;
-    this.location = hiking.trails.location;
-    this.stars = hiking.trails.stars;
-    this.star_votes = hiking.trails.star_votes;
-    this.summary = hiking.trails.summary;
-    this.trail_url = hiking.trails.trail_url;
-    this.conditions = hiking.trails.conditions;
-    this.condition_date = hiking.trails.condition_date;
-    this.condition_time = hiking.trails.condition_time;
+    this.name = hiking.name;
+    this.location = hiking.location;
+    this.length = hiking.length;
+    this.stars = hiking.stars;
+    this.star_votes = hiking.star_votes;
+    this.summary = hiking.summary;
+    this.trail_url = hiking.trail_url;
+    this.conditionDetails = hiking.conditionDetails;
+    this.condition_date = hiking.condition_date;
+    this.condition_time = hiking.condition_time;
 }
 
-server.listen(PORT, () => {
-    console.log(`listining on port ${PORT}`);
-})
+client.connect()
+.then(()=>{
+    server.listen(PORT, () => {
+        console.log(`listining on port ${PORT}`);
+    });
+});
