@@ -19,8 +19,8 @@ server.get('/', (request, response) => {
     response.status(200).send('it works ');
 })
 
-// server.get('/weather', weatherHandler);
-// server.get('/location', locationHandler);
+server.get('/weather', weatherHandler);
+server.get('/location', locationHandler);
 server.get('/hiking', hikingHandler);
 
 
@@ -31,23 +31,19 @@ function locationHandler(request, response) {
     const city = request.query.city;
     // const city = request.query.search_query;
     console.log('the city of location is:', city);
-    getLocation(city)
-        .then(locationData => response.status(200).json(locationData));
+    let key = process.env.LOCATION_API_KEY;
+    getLocation(city,key)
+        .then(locationData2 => response.status(200).json(locationData2.body));
 }
 
-const locationSummaries = [];
-
-function getLocation(city) {
-    let key = process.env.LOCATION_API_KEY;
-    const url = `https://eu1.locationiq.com/v1/search.php?key=${key}q=${city}&format=json`;
+function getLocation(city,key) {
+    const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
     console.log('ddddddd', url);
     return superagent.get(url)
-        .then(locationData => {
-            locationData.body.data.forEach(val => {
-                var locationData = new Location(val);
-                locationSummaries.push(locationData);
-            });
-            return locationSummaries;
+        .then(locationData2 => {
+                const locationData = new Location(city,locationData2.body);
+                return locationData2;
+            
         })
 
 
