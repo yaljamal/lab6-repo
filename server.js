@@ -13,8 +13,8 @@ const server = express();
 const PORT = process.env.PORT || 3000;
 server.use(cors());
 
-const pg=require('pg');
-const client = new pg.Client(process.env.DATABASE_URL); 
+const pg = require('pg');
+const client = new pg.Client(process.env.DATABASE_URL);
 server.get('/', (request, response) => {
     response.status(200).send('it works ');
 })
@@ -22,8 +22,6 @@ server.get('/', (request, response) => {
 server.get('/weather', weatherHandler);
 // localhost3000:/location?city=
 server.get('/location', locationHandler);
-// localhost3000:/addlocation?city=
-server.get('/addlocation', addLocation);
 // http://localhost:3000/hiking?lattitude=-105.2755&longitude=39.9787
 server.get('/hiking', hikingHandler);
 
@@ -32,40 +30,41 @@ server.get('/hiking', hikingHandler);
 // http://localhost:3000/location?city=Lynnwood
 function locationHandler(request, response) {
     const city = request.query.city;
-    // const city = request.query.search_query;
-    console.log('the city of location is:', city);
-    let key = process.env.LOCATION_API_KEY;
-    getLocation(city,key)
-        .then(locationData2 => response.status(200).json(locationData2.body));
+    getLocation(city)
+        .then(locationData2 => response.status(200).json(locationData2));
 }
-function addLocation(request,response){
-    let search_query=request.query.search;
-    let formatted_query=request.query.format;
-    let lat=request.query.lat;
-    let lon=request.query.lon;
-    let saveValues=[search_query,formatted_query,lat,lon];
-    let sql = `INSERT INTO newLocation (search_query,formatted_query,lattitude,longitude)VALUES($1,$2,$3,$4)`;
-    client.query(sql,saveValues)
-    .then(result=>{
-        response.status(200).json(result.rows);
 
-    })
-}
-function getLocation(city,key) {
-    let sql_query = 'select * newLocation where search_query = amman ';
-    if(sql_query === null){
-        const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
-        console.log('the location URL', url);
-        return superagent.get(url)
-            .then(locationData2 => {
-                    const locationData = new Location(city,locationData2.body);
-                    return locationData2;
-                
-            });
-    }
-    else{
-        addLocation();
-    }
+function getLocation(city) {
+    let sql = 'SELECT * FROM newLocations WHERE search_query=$1;';
+    let saveValue = [city];
+    console.log('the city of location is:', city);
+    return client.query(sql, saveValue)
+        .then(result => {
+            if (result.count) {
+                return result.rows[0];
+            }
+            else {
+                let key = process.env.LOCATION_API_KEY;
+                const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
+                console.log('the location URL', url);
+                return superagent.get(url)
+                    .then(locationData2 => {
+                        const locationData = new Location(city, locationData2.body);
+                        let formatQuery = locationData.formatted_query;
+                        let lat = locationData.lattitude;
+                        let lon = locationData.longitude;
+                        let sql = 'INSERT INTO newLocations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4);';
+                        let saveValue = [city, formatQuery, lat, lon];
+                        return client.query(sql, saveValue)
+                            .then(result => {
+                                result.rows[0];
+                            })
+                        // return locationData2;
+
+                    });
+            }
+            // response.status(200).json(result.rows);
+        });
 }
 function Location(city, geoData) {
     this.search_query = city;
@@ -74,19 +73,6 @@ function Location(city, geoData) {
     this.longitude = geoData[0].lon;
 }
 
-//http://localhost:3000/weather?city=amman
-// server.get('/weather', (request, response) => {
-
-//     let weatherArry = [];
-//     const weatherData = require('./data/weather.json');
-//     const city = request.query.city_name;
-//     weatherData.data.forEach((val, ind) => {
-//         const weatherData2 = new Weather(city, val);
-//         weatherArry.push(weatherData2);
-
-//     });
-//     response.send(weatherArry);
-// });
 function weatherHandler(request, response) {
     const city = request.query.city;
     console.log('the city is :', city);
@@ -114,19 +100,19 @@ function Weather(weather3) {
 }
 function hikingHandler(request, response) {
     // console.log('the id is :', id);
-    let lat=request.query.lattitude;
-    let lon=request.query.longitude;
+    let lat = request.query.lattitude;
+    let lon = request.query.longitude;
     let key = process.env.HIKING_API_KEY;
-    getHik(key,lat,lon)
+    getHik(key, lat, lon)
         .then(hikingData => response.status(200).json(hikingData));
 
 }
-function getHik(key,lat,lon) {
+function getHik(key, lat, lon) {
     let url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=100&sort=Distance&key=${key}`;
     console.log(url);
     return superagent.get(url)
         .then(hikingData => {
-          let alltrials=  hikingData.body.trails.map(val => {
+            let alltrials = hikingData.body.trails.map(val => {
                 return new Hiking(val);
             });
             return alltrials;
@@ -146,8 +132,8 @@ function Hiking(hiking) {
 }
 
 client.connect()
-.then(()=>{
-    server.listen(PORT, () => {
-        console.log(`listining on port ${PORT}`);
+    .then(() => {
+        server.listen(PORT, () => {
+            console.log(`listining on port ${PORT}`);
+        });
     });
-});
