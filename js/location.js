@@ -5,6 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
+const server = express();
 
 function getLocation(city) {
     let sql = 'SELECT * FROM newLocations WHERE search_query=$1;';
@@ -12,7 +13,7 @@ function getLocation(city) {
     console.log('the city of location is:', city);
     return client.query(sql, saveValue)
         .then(result => {
-            if (result.count) {
+            if (result.rows.length) {
                 return result.rows[0];
             }
             else {
@@ -29,10 +30,9 @@ function getLocation(city) {
                         let saveValue = [city, formatQuery, lat, lon];
                         return client.query(sql, saveValue)
                             .then(result => {
-                                result.rows[0];
+                               return result.rows[0];
                             })
                         // return locationData2;
-
                     });
             }
             // response.status(200).json(result.rows);

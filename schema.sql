@@ -29,7 +29,7 @@ CREATE TABLE yelp
   image_url VARCHAR(255),
   price NUMERIC(10,7),
   rating NUMERIC(10,7),
-  url VARCHAR(255),
+  url VARCHAR(255)
  
 );
 

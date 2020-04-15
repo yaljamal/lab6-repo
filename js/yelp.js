@@ -19,7 +19,7 @@ function getyelp(yelp) {
             }
             else {
                 let key = process.env.YELP_API_KEY;
-                //  const url = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${movie}`;
+                const url = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${movie}`;
                 console.log('the yelp URL', url);
                 return superagent.get(url)
                     .then(yelpData2 => {
@@ -33,16 +33,13 @@ function getyelp(yelp) {
                         let sql = 'INSERT INTO yelp (name,image_url,price,rating,url) VALUES ($1,$2,$3,$4,$5);';
                         return client.query(sql, saveValue)
                             .then(result => {
-                                result.rows[0];
+                              return  result.rows[0];
                             })
-                        // return movieData2;
 
                     });
             }
-            // response.status(200).json(result.rows);
         });
 }
-
 function Yelp(yelp) {
     this.name = yelp.name;
     this.image_url = yelp.image_url;
